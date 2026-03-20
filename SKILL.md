@@ -306,14 +306,42 @@ After saving learnings, produce actionable suggestions for the SKILL.md:
 
 1. Read `learnings/INDEX.md` for the target skill
 2. Read all learning files referenced as `new` (unresolved)
-3. Present a summary:
-   - Total accumulated learnings
-   - Breakdown by category and impact
-   - Top 3-5 unresolved high-impact learnings with suggested fixes
-4. Ask if the user wants to:
-   - Apply specific suggestions now
-   - Dismiss any learnings that are no longer relevant
-   - Run `skill-self-improver` with these learnings as input
+3. Present the review using this **exact structure**:
+
+```
+## Learning Review: <skill-name>
+
+### Summary
+- Total learnings: N
+- High impact: N | Medium impact: N | Low impact: N
+- Unresolved: N | Applied: N | Dismissed: N
+
+### By Category
+- EDGE_CASE: N
+- MISSING_INSTRUCTION: N
+- (etc.)
+
+### Unresolved Learnings (status: new)
+These learnings have NOT been applied to SKILL.md yet:
+
+1. **<title>** — <category> — <impact> impact
+   Fix: <suggested change>
+
+2. ...
+
+### Previously Applied
+These learnings have already been incorporated into SKILL.md:
+
+1. **<title>** — applied on <date>
+
+### Next Steps
+What would you like to do?
+1. **Apply** — apply one or more unresolved suggestions to SKILL.md
+2. **Dismiss** — mark learnings that are no longer relevant
+3. **Run skill-self-improver** — launch `/skill-self-improver <skill-name>` to run automated eval loops informed by these learnings
+```
+
+**Important:** Always separate unresolved (new) learnings from applied ones in distinct sections. Always end with the 3 numbered next-step options (Apply, Dismiss, Run skill-self-improver). This structure is required even if some sections are empty.
 
 ---
 
