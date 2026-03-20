@@ -11,7 +11,7 @@ description: >
   "what did we learn", "skill feedback", "learning review", "review skill usage",
   "save what we learned".
 allowed-tools: "Read, Write, Edit, Glob, Grep, Bash(*), Agent"
-argument-hint: "<skill-name> [--apply] [--review]"
+argument-hint: "[skill-name] [--apply] [--review]"
 metadata:
   author: Andrea Salvatore <andreahaku@gmail.com>
   version: 2.0.0
@@ -37,10 +37,10 @@ After any skill completes, Claude performs a **lightweight inline analysis** dir
 - **NEVER applies changes without explicit user approval**
 
 ### Manual Mode (invoked by user)
-Full-depth analysis with persistent storage. Three sub-modes:
-1. **Default** (`/what-have-we-learned <skill-name>`): extract, save, and suggest
-2. **Apply** (`/what-have-we-learned <skill-name> --apply`): extract, save, suggest, and apply approved changes
-3. **Review** (`/what-have-we-learned <skill-name> --review`): show accumulated learnings
+Full-depth analysis with persistent storage. Skill name is optional — if omitted, auto-detects from conversation. Three sub-modes:
+1. **Default** (`/what-have-we-learned [skill-name]`): extract, save, and suggest
+2. **Apply** (`/what-have-we-learned [skill-name] --apply`): extract, save, suggest, and apply approved changes
+3. **Review** (`/what-have-we-learned [skill-name] --review`): show accumulated learnings
 
 ---
 
@@ -108,7 +108,34 @@ Where `<type>` is one of: `Edge Case` | `Missing Step` | `Wrong Default` | `Good
 
 ## Manual Mode: Full Analysis
 
-When the user explicitly invokes `/what-have-we-learned <skill-name>`, run the full analysis pipeline.
+When the user explicitly invokes `/what-have-we-learned`, run the full analysis pipeline.
+
+### Phase 0: Resolve Target Skill
+
+Determine which skill to analyze based on what the user provided:
+
+**If `<skill-name>` is given explicitly:**
+Use it directly. Proceed to Phase 1.
+
+**If NO skill name is given (`/what-have-we-learned` with no arguments, or with only flags like `--apply` or `--review`):**
+
+1. **Scan the conversation** for Skill tool invocations. Look for any skill that was called via the Skill tool during this session.
+2. **If exactly one skill was used:** use it as the target. Inform the user: `Detected skill: <skill-name>`.
+3. **If multiple skills were used:** list them and ask the user which one to analyze:
+   ```
+   Multiple skills used in this session:
+   1. approach
+   2. ship
+   3. pr
+
+   Which skill would you like to analyze? (number or name, or "all" for all of them)
+   ```
+   If the user responds with `"all"`, run the full analysis pipeline sequentially for each skill.
+4. **If no skills were used in this conversation:** inform the user and ask:
+   ```
+   No skills were used in this conversation. Which skill would you like to analyze?
+   You can also use --review to check accumulated learnings for any skill.
+   ```
 
 ### Phase 1: Locate the Skill
 
