@@ -254,6 +254,21 @@ Also update (or create) `<skill-directory>/learnings/INDEX.md` — a summary of 
 | ... | ... | ... | ... | ... | ... |
 ```
 
+### Phase 3.5: Display Learnings to User
+
+Before generating suggestions, **always show the extracted learnings to the user** in the output. For each learning, display:
+
+```
+### Learning 1: <Short title>
+- **Category:** <EDGE_CASE | MISSING_INSTRUCTION | WRONG_ASSUMPTION | EFFECTIVE_PATTERN | FRICTION_POINT | ENVIRONMENT_INSIGHT>
+- **Confidence:** <HIGH | MEDIUM | LOW>
+- **Impact:** <HIGH | MEDIUM | LOW>
+- **What happened:** <1-2 sentences>
+- **Suggested fix:** <specific SKILL.md change>
+```
+
+This is NOT optional — the user must see the individual learnings with their ratings before the suggestions section. Do not skip to suggestions.
+
 ### Phase 4: Generate Improvement Suggestions
 
 After saving learnings, produce actionable suggestions for the SKILL.md:

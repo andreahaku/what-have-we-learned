@@ -1,0 +1,150 @@
+{
+  "skill_name": "what-have-we-learned",
+  "tests": [
+    {
+      "id": "test-1-auto-mode-with-findings",
+      "prompt": "Context: You just used the /approach skill to evaluate SDK choices for a payment integration. The user said 'no, you forgot to check if Stripe is already in our dependencies' and had to point out that package.json already had stripe installed. The skill also didn't consider the existing payment utils in the codebase. Produce the auto-mode output for the 'approach' skill based on these findings.",
+      "expected_output_description": "A compact Skill Learning Detected block with 1-2 findings about the approach skill missing dependency checks and existing code patterns. Should include type labels, one-line descriptions, specific fixes, and the Save and apply? prompt.",
+      "assertions": [
+        {
+          "id": "a1",
+          "description": "Does the output contain the exact header '**Skill Learning Detected**' with the skill name in backticks/parens?",
+          "type": "binary"
+        },
+        {
+          "id": "a2",
+          "description": "Does each finding have a type label that is one of: Edge Case, Missing Step, Wrong Default, Good Pattern, Friction, Environment?",
+          "type": "binary"
+        },
+        {
+          "id": "a3",
+          "description": "Does each finding include a 'Fix:' line with a specific SKILL.md change suggestion (not vague)?",
+          "type": "binary"
+        },
+        {
+          "id": "a4",
+          "description": "Does the output end with 'Save and apply? [y/n/skip]' or a close variant?",
+          "type": "binary"
+        },
+        {
+          "id": "a5",
+          "description": "Is the entire auto-mode block under 15 lines (compact, not verbose)?",
+          "type": "binary"
+        }
+      ]
+    },
+    {
+      "id": "test-2-auto-mode-silent",
+      "prompt": "Context: You just used the /ship skill to commit and push code. Everything worked perfectly — tests passed, commit went through, push succeeded, user said nothing negative. There were no corrections, no surprises, no edge cases. Produce the auto-mode output for the 'ship' skill.",
+      "expected_output_description": "The output should be empty or explicitly state that nothing notable was found. The skill should NOT produce a Skill Learning Detected block when everything went smoothly.",
+      "assertions": [
+        {
+          "id": "a1",
+          "description": "Does the output NOT contain a 'Skill Learning Detected' block?",
+          "type": "binary"
+        },
+        {
+          "id": "a2",
+          "description": "Is the output either empty, or a single brief sentence saying nothing notable was found (under 3 lines)?",
+          "type": "binary"
+        }
+      ]
+    },
+    {
+      "id": "test-3-manual-mode-default",
+      "prompt": "Context: During this conversation, you used the /pr skill to create a pull request. The skill generated a good PR title but the description was too short — the user had to manually add test plan details. Also, the skill didn't check if there were uncommitted changes before creating the PR, which caused a warning. Run /what-have-we-learned pr (manual mode, default — no --apply or --review flag).",
+      "expected_output_description": "Full manual mode output: locates the pr skill, analyzes findings (MISSING_INSTRUCTION for test plan, EDGE_CASE for uncommitted changes check), saves to learnings/ directory, generates SKILL.md change suggestions with before/after diffs, and ends with the Learning Summary block.",
+      "assertions": [
+        {
+          "id": "a1",
+          "description": "Does the output include at least 2 distinct learnings with category labels from the defined set (EDGE_CASE, MISSING_INSTRUCTION, WRONG_ASSUMPTION, EFFECTIVE_PATTERN, FRICTION_POINT, ENVIRONMENT_INSIGHT)?",
+          "type": "binary"
+        },
+        {
+          "id": "a2",
+          "description": "Does each learning include Confidence and Impact ratings (HIGH/MEDIUM/LOW)?",
+          "type": "binary"
+        },
+        {
+          "id": "a3",
+          "description": "Does the output include a 'Suggested SKILL.md Changes' section with at least one before/after diff?",
+          "type": "binary"
+        },
+        {
+          "id": "a4",
+          "description": "Does the output end with a 'Learning Summary' block that includes extracted count, categories breakdown, and top actions?",
+          "type": "binary"
+        },
+        {
+          "id": "a5",
+          "description": "Does the output mention saving learnings to a file path matching the pattern learnings/<date>-<description>.md?",
+          "type": "binary"
+        },
+        {
+          "id": "a6",
+          "description": "Does the output NOT apply any changes to SKILL.md (since --apply was not passed)?",
+          "type": "binary"
+        }
+      ]
+    },
+    {
+      "id": "test-4-no-skill-name-detection",
+      "prompt": "Context: In this conversation, the user previously used /approach to evaluate database choices and /ship to commit. The user now invokes /what-have-we-learned with no skill name argument. Handle the Phase 0 resolution.",
+      "expected_output_description": "The output should detect that two skills were used (approach and ship), list them, and ask the user which one to analyze. Should offer the 'all' option.",
+      "assertions": [
+        {
+          "id": "a1",
+          "description": "Does the output list at least 2 detected skills by name?",
+          "type": "binary"
+        },
+        {
+          "id": "a2",
+          "description": "Does the output ask the user to choose which skill to analyze?",
+          "type": "binary"
+        },
+        {
+          "id": "a3",
+          "description": "Does the output mention the option to analyze 'all' skills?",
+          "type": "binary"
+        },
+        {
+          "id": "a4",
+          "description": "Does the output NOT proceed with full analysis before the user responds (it should wait)?",
+          "type": "binary"
+        }
+      ]
+    },
+    {
+      "id": "test-5-review-mode",
+      "prompt": "Context: The user invokes /what-have-we-learned approach --review. The approach skill has a learnings/INDEX.md with 4 accumulated learnings: 2 EDGE_CASE (high impact, status: new), 1 MISSING_INSTRUCTION (medium, status: applied), 1 EFFECTIVE_PATTERN (medium, status: new). Produce the review mode output.",
+      "expected_output_description": "Review mode output that summarizes accumulated learnings, shows category breakdown, highlights unresolved high-impact items, and asks the user what to do next (apply, dismiss, or run skill-self-improver).",
+      "assertions": [
+        {
+          "id": "a1",
+          "description": "Does the output include a summary with total learnings count and breakdown by impact level?",
+          "type": "binary"
+        },
+        {
+          "id": "a2",
+          "description": "Does the output show a category breakdown (listing categories with counts)?",
+          "type": "binary"
+        },
+        {
+          "id": "a3",
+          "description": "Does the output highlight the unresolved/new learnings separately from applied ones?",
+          "type": "binary"
+        },
+        {
+          "id": "a4",
+          "description": "Does the output offer next-step options including applying suggestions, dismissing learnings, or running skill-self-improver?",
+          "type": "binary"
+        },
+        {
+          "id": "a5",
+          "description": "Does the output NOT attempt to analyze the current conversation for new learnings (review mode only shows accumulated)?",
+          "type": "binary"
+        }
+      ]
+    }
+  ]
+}
