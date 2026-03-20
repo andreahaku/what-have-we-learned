@@ -4,15 +4,17 @@ description: >
   Post-session learning extractor for Claude Code skills. Analyzes the current conversation
   to identify what worked, what failed, and what's missing from a skill's instructions.
   Produces actionable improvement suggestions and saves learnings to a structured log
-  that skill-self-improver can consume. Use after using any skill when you notice
-  edge cases, failures, or patterns worth capturing. Trigger phrases: "what have we learned",
-  "skill learnings", "capture learnings", "what did we learn", "skill feedback",
-  "learning review", "review skill usage", "save what we learned".
+  that skill-self-improver can consume. Triggers automatically after any skill usage via
+  CLAUDE.md rule — Claude performs a lightweight inline analysis and presents suggestions
+  for user approval. Can also be invoked manually for deeper analysis or review.
+  Trigger phrases: "what have we learned", "skill learnings", "capture learnings",
+  "what did we learn", "skill feedback", "learning review", "review skill usage",
+  "save what we learned".
 allowed-tools: "Read, Write, Edit, Glob, Grep, Bash(*), Agent"
 argument-hint: "<skill-name> [--apply] [--review]"
 metadata:
   author: Andrea Salvatore <andreahaku@gmail.com>
-  version: 1.0.0
+  version: 2.0.0
   category: meta
   tags: [skills, learning, meta, continuous-improvement, feedback-loop]
 ---
@@ -23,16 +25,92 @@ You are a learning extraction agent. After a skill has been used in a conversati
 
 You are the **observation** side of a continuous improvement cycle. Your counterpart, `skill-self-improver`, is the **execution** side — it takes structured input (including your learnings) and runs automated eval loops to apply improvements.
 
-## Quick Start
+## Modes of Operation
 
-Parse the user's request to determine:
-1. **Target skill name** — which skill to extract learnings for (required)
-2. **Mode**:
-   - Default: extract learnings from the current conversation and save them
-   - `--apply`: extract learnings AND propose specific SKILL.md edits
-   - `--review`: show accumulated learnings for a skill without extracting new ones
+This skill operates in two modes:
 
-## Phase 1: Locate the Skill
+### Auto Mode (triggered by CLAUDE.md rule)
+After any skill completes, Claude performs a **lightweight inline analysis** directly in the conversation — no sub-agent, no heavy processing. This is a quick scan that:
+- Takes 30 seconds, not 5 minutes
+- Outputs a compact block at the end of the response
+- Only flags findings worth acting on — if nothing notable happened, outputs nothing
+- **NEVER applies changes without explicit user approval**
+
+### Manual Mode (invoked by user)
+Full-depth analysis with persistent storage. Three sub-modes:
+1. **Default** (`/what-have-we-learned <skill-name>`): extract, save, and suggest
+2. **Apply** (`/what-have-we-learned <skill-name> --apply`): extract, save, suggest, and apply approved changes
+3. **Review** (`/what-have-we-learned <skill-name> --review`): show accumulated learnings
+
+---
+
+## Auto Mode: Inline Post-Skill Analysis
+
+This is the primary mode. It runs automatically after every skill usage.
+
+### When to trigger
+After a skill completes (the Skill tool returns output), analyze the interaction **inline** — as part of your current response, not as a separate invocation.
+
+### What to look for
+Scan the conversation for these signals, in order of importance:
+
+1. **User corrections** — the user said "no", "not like that", "actually...", or had to rephrase
+2. **Unexpected failures** — the skill errored, produced wrong output, or missed a step
+3. **Manual additions** — the user had to add something the skill should have included
+4. **Smooth wins** — something worked particularly well that the skill doesn't explicitly instruct
+
+### Decision: report or stay silent
+
+**Stay silent if:**
+- The skill worked as expected with no corrections
+- Any issues were specific to this one case and not generalizable
+- The findings are trivial (typos, minor formatting)
+
+**Report if:**
+- The user had to correct or supplement the skill's behavior
+- A clear gap in the SKILL.md instructions was exposed
+- A pattern emerged that would help in future uses
+- Something worked exceptionally well and should be protected
+
+### Auto Mode output format
+
+When there ARE findings worth reporting, append this block at the end of your response:
+
+```
+---
+**Skill Learning Detected** (`<skill-name>`)
+
+<N> finding(s) from this session:
+
+1. **<type>**: <one-line description>
+   Fix: <specific SKILL.md change, 1-2 lines>
+
+2. **<type>**: <one-line description>
+   Fix: <specific SKILL.md change, 1-2 lines>
+
+Save and apply? [y/n/skip]
+```
+
+Where `<type>` is one of: `Edge Case` | `Missing Step` | `Wrong Default` | `Good Pattern` | `Friction` | `Environment`
+
+### User responses to auto mode
+
+- **"y" or "yes"**: Save the learnings to `<skill-dir>/learnings/` AND apply the suggested SKILL.md changes. Commit with message `learning(<skill-name>): <brief description>`.
+- **"n" or "no"**: Discard — don't save, don't apply. Move on.
+- **"skip"**: Save the learnings to `<skill-dir>/learnings/` but do NOT apply changes to SKILL.md yet. They'll be available for `/what-have-we-learned <skill-name> --review` later.
+- **"save only"**: Same as "skip" — save but don't apply.
+
+### CRITICAL: Never auto-apply
+
+**NEVER modify a skill's SKILL.md without explicit user approval.** The auto mode ONLY observes and suggests. The user decides what gets applied. This is non-negotiable.
+
+---
+
+## Manual Mode: Full Analysis
+
+When the user explicitly invokes `/what-have-we-learned <skill-name>`, run the full analysis pipeline.
+
+### Phase 1: Locate the Skill
 
 1. Find the target skill directory:
    - `~/.claude/skills/<skill-name>/SKILL.md`
@@ -43,11 +121,11 @@ Parse the user's request to determine:
 
 3. Check if a `learnings/` directory exists. If not, create it.
 
-## Phase 2: Analyze the Conversation
+### Phase 2: Analyze the Conversation
 
 Review the current conversation history looking for signals about the skill's performance. Categorize findings into these types:
 
-### Learning Categories
+#### Learning Categories
 
 **1. EDGE_CASE** — A scenario the skill didn't handle well
 - The user had to correct the skill's output
@@ -79,7 +157,7 @@ Review the current conversation history looking for signals about the skill's pe
 - Platform-specific behavior (macOS, Linux, etc.)
 - Dependency or configuration requirements
 
-### Extraction Rules
+#### Extraction Rules
 
 - Only extract learnings that are **generalizable** — they should help in future uses, not just this specific instance
 - Each learning must be **specific and actionable** — "the skill should be better" is NOT a learning
@@ -87,16 +165,16 @@ Review the current conversation history looking for signals about the skill's pe
 - Rate the **confidence**: HIGH (clear user feedback), MEDIUM (inferred from behavior), LOW (speculation)
 - Rate the **impact**: HIGH (causes failures), MEDIUM (degrades quality), LOW (minor improvement)
 
-## Phase 3: Save Learnings
+### Phase 3: Save Learnings
 
 Write learnings to `<skill-directory>/learnings/` using this format:
 
-### File naming
+#### File naming
 `learnings/<date>-<short-description>.md`
 
 Example: `learnings/2026-03-20-missing-error-handling.md`
 
-### File format
+#### File format
 ```markdown
 ---
 skill: <skill-name>
@@ -120,7 +198,7 @@ impact: high | medium | low  # highest impact among findings
 ...
 ```
 
-### Aggregation file
+#### Aggregation file
 Also update (or create) `<skill-directory>/learnings/INDEX.md` — a summary of all learnings to date:
 
 ```markdown
@@ -149,16 +227,16 @@ Also update (or create) `<skill-directory>/learnings/INDEX.md` — a summary of 
 | ... | ... | ... | ... | ... | ... |
 ```
 
-## Phase 4: Generate Improvement Suggestions
+### Phase 4: Generate Improvement Suggestions
 
 After saving learnings, produce actionable suggestions for the SKILL.md:
 
-### For each HIGH or MEDIUM impact learning:
+#### For each HIGH or MEDIUM impact learning:
 1. **Identify the specific section** of SKILL.md that needs to change
 2. **Draft the exact edit** — show the before/after diff
 3. **Explain why** this change would prevent the observed issue
 
-### Format suggestions as:
+#### Format suggestions as:
 ```
 ## Suggested SKILL.md Changes
 
@@ -174,19 +252,15 @@ After saving learnings, produce actionable suggestions for the SKILL.md:
 **Impact:** Addresses learnings #1, #3
 ```
 
-## Phase 5: Apply Changes (--apply mode only)
-
-If `--apply` flag is passed:
+### Phase 5: Apply Changes (--apply mode or user approved)
 
 1. Present all suggested changes to the user
-2. Wait for confirmation
-3. Apply approved changes to SKILL.md using the Edit tool
-4. Git commit with message: `learning: <skill-name> — applied N learnings from <date>`
+2. **Wait for explicit confirmation** — NEVER auto-apply
+3. Apply only the approved changes to SKILL.md using the Edit tool
+4. Git commit with message: `learning(<skill-name>): applied N learnings from <date>`
 5. Update learnings INDEX.md to mark applied learnings as `applied`
 
-## Phase 6: Review Mode (--review only)
-
-If `--review` flag is passed:
+### Phase 6: Review Mode (--review only)
 
 1. Read `learnings/INDEX.md` for the target skill
 2. Read all learning files referenced as `new` (unresolved)
@@ -198,6 +272,8 @@ If `--review` flag is passed:
    - Apply specific suggestions now
    - Dismiss any learnings that are no longer relevant
    - Run `skill-self-improver` with these learnings as input
+
+---
 
 ## Integration with skill-self-improver
 
@@ -214,7 +290,7 @@ When skill-self-improver runs, it should:
 - Protect instructions tagged as EFFECTIVE_PATTERN
 - Generate eval assertions from EDGE_CASE learnings
 
-## Output Format
+## Output Format (Manual Mode)
 
 Always end with a concise summary:
 
@@ -237,8 +313,10 @@ Next steps:
 
 ## Important Notes
 
-- **Don't fabricate learnings** — only extract what actually happened in the conversation. If nothing notable happened, say so.
+- **NEVER auto-apply changes** — all SKILL.md modifications require explicit user approval. This is the #1 rule.
+- **Don't fabricate learnings** — only extract what actually happened in the conversation. If nothing notable happened, stay silent (auto mode) or say so (manual mode).
 - **Bias toward action** — every learning should lead to a concrete SKILL.md change, even if small.
 - **Preserve what works** — EFFECTIVE_PATTERN learnings are just as important as failures. They protect good instructions from being removed.
 - **Be surgical** — suggest minimal, targeted edits. Don't rewrite entire sections.
+- **Stay lightweight in auto mode** — the user didn't ask for a learning analysis; it's a bonus. Keep it brief and unobtrusive. If in doubt, stay silent.
 - **Cumulative value** — individual learnings may seem small, but over time the learning log becomes a rich source of real-world feedback that synthetic evals can't capture.

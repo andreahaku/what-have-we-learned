@@ -14,18 +14,46 @@ Both miss the most valuable signal: **what actually happens when a skill is used
 
 ## How It Works
 
-`what-have-we-learned` bridges that gap. After using any skill, invoke it to extract and store learnings:
+### Auto Mode (default)
+
+After installing, the skill works **automatically**. A CLAUDE.md rule triggers a lightweight inline analysis after every skill usage. If something notable happened — a user correction, a missing step, an unexpected failure — Claude appends a compact suggestion block:
 
 ```
+---
+**Skill Learning Detected** (`approach`)
+
+2 finding(s) from this session:
+
+1. **Missing Step**: Skill doesn't check for monorepo workspace dependencies before listing approaches
+   Fix: Add "check package.json workspaces" to Step 1
+
+2. **Good Pattern**: Presenting a compatibility matrix worked well for SDK comparisons
+   Fix: Add as recommended format for SDK/library decisions
+
+Save and apply? [y/n/skip]
+```
+
+**You decide what happens:**
+- **`y`** — save the learning AND apply the SKILL.md change
+- **`n`** — discard everything
+- **`skip`** — save the learning for later, don't change SKILL.md yet
+
+If nothing notable happened, the skill stays silent — no noise.
+
+### Manual Mode
+
+For deeper analysis or reviewing accumulated learnings:
+
+```bash
+# Full analysis of current conversation
 /what-have-we-learned <skill-name>
+
+# Full analysis + apply approved changes
+/what-have-we-learned <skill-name> --apply
+
+# Review all accumulated learnings for a skill
+/what-have-we-learned <skill-name> --review
 ```
-
-The skill analyzes the current conversation and:
-
-1. **Extracts learnings** — categorized by type (edge cases, missing instructions, effective patterns, etc.)
-2. **Saves structured logs** — to `<skill-dir>/learnings/` with metadata (confidence, impact, evidence)
-3. **Maintains an index** — `learnings/INDEX.md` aggregates all findings over time
-4. **Generates suggestions** — specific, surgical edits to the target skill's SKILL.md
 
 ### Learning Categories
 
@@ -38,33 +66,41 @@ The skill analyzes the current conversation and:
 | `FRICTION_POINT` | Things that slowed down or confused the workflow |
 | `ENVIRONMENT_INSIGHT` | Runtime/platform-specific behaviors that matter |
 
-## Usage
-
-### Extract learnings from the current conversation
-```
-/what-have-we-learned <skill-name>
-```
-
-### Extract and apply suggested changes to SKILL.md
-```
-/what-have-we-learned <skill-name> --apply
-```
-
-### Review accumulated learnings for a skill
-```
-/what-have-we-learned <skill-name> --review
-```
-
-## Integration with skill-self-improver
+## The Improvement Cycle
 
 This skill is designed to work alongside [skill-self-improver](https://github.com/andreahaku/skill-self-improver) as two halves of a continuous improvement cycle:
 
 ```
-Real usage → what-have-we-learned → learnings log
-                                          ↓
-                               skill-self-improver
-                                          ↓
-                              Improved SKILL.md → Real usage
+              ┌─────────────────────────────┐
+              │       Real Skill Usage       │
+              └──────────────┬──────────────┘
+                             │
+                             ▼
+              ┌─────────────────────────────┐
+              │   what-have-we-learned      │
+              │   (auto: observe & suggest) │
+              └──────────────┬──────────────┘
+                             │
+                    user approves
+                             │
+                             ▼
+              ┌─────────────────────────────┐
+              │      learnings/ log         │
+              │   (structured findings)     │
+              └──────────────┬──────────────┘
+                             │
+                             ▼
+              ┌─────────────────────────────┐
+              │    skill-self-improver       │
+              │  (automated eval & mutate)  │
+              └──────────────┬──────────────┘
+                             │
+                             ▼
+              ┌─────────────────────────────┐
+              │     Improved SKILL.md       │
+              └──────────────┬──────────────┘
+                             │
+                             └──────► back to Real Usage
 ```
 
 When `skill-self-improver` runs, it reads the learnings log to:
@@ -75,16 +111,31 @@ When `skill-self-improver` runs, it reads the learnings log to:
 
 ## Installation
 
-Clone the repo and symlink into your Claude Code skills directory:
+### 1. Clone and symlink
 
 ```bash
 git clone https://github.com/andreahaku/what-have-we-learned.git ~/Development/Claude/what-have-we-learned
 ln -s ~/Development/Claude/what-have-we-learned ~/.claude/skills/what-have-we-learned
 ```
 
+### 2. Enable auto-trigger
+
+Add this section to your `~/.claude/CLAUDE.md`:
+
+```markdown
+## Skill Learning Loop
+
+After any skill completes (via the Skill tool), perform a quick inline analysis of how the skill performed in this conversation. Follow the **Auto Mode** instructions in the `what-have-we-learned` skill:
+- Scan for user corrections, unexpected failures, manual additions, or smooth wins
+- If nothing notable happened, stay silent — do NOT output anything
+- If there are actionable findings, append a compact "Skill Learning Detected" block at the end of your response
+- **NEVER modify any skill's SKILL.md without explicit user approval** — only suggest, never auto-apply
+- Keep it brief: 2-4 lines per finding, max. The user didn't ask for a report.
+```
+
 ## Learning File Format
 
-Learnings are saved as markdown files with YAML frontmatter:
+Learnings are saved as markdown files with YAML frontmatter in `<skill-dir>/learnings/`:
 
 ```markdown
 ---
@@ -105,6 +156,16 @@ impact: high
 - **Evidence:** User had to manually point out that package A depends on package B's types.
 - **Suggested fix:** Add a step to check for workspace dependencies before listing approaches.
 ```
+
+An `INDEX.md` file in the same directory aggregates all learnings with status tracking (new/applied/dismissed).
+
+## Design Principles
+
+- **User is always in control** — changes to SKILL.md are never applied without explicit approval
+- **Silent when nothing to report** — no noise after successful skill usage
+- **Bias toward action** — every learning maps to a concrete SKILL.md edit
+- **Preserve what works** — effective patterns are protected, not just failures captured
+- **Cumulative value** — individual learnings are small, but the log becomes invaluable over time
 
 ## Requirements
 
