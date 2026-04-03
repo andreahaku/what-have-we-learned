@@ -1,15 +1,10 @@
 ---
 name: what-have-we-learned
 description: >
-  Post-session learning extractor for Claude Code skills. Analyzes the current conversation
-  to identify what worked, what failed, and what's missing from a skill's instructions.
-  Produces actionable improvement suggestions and saves learnings to a structured log
-  that skill-self-improver can consume. Triggers automatically after any skill usage via
-  CLAUDE.md rule — Claude performs a lightweight inline analysis and presents suggestions
-  for user approval. Can also be invoked manually for deeper analysis or review.
-  Trigger phrases: "what have we learned", "skill learnings", "capture learnings",
-  "what did we learn", "skill feedback", "learning review", "review skill usage",
-  "save what we learned".
+  Post-session learning extractor for skills. Analyzes conversation to find what worked,
+  failed, or is missing from skill instructions. Produces improvement suggestions. Triggers
+  automatically after skill usage (CLAUDE.md rule) or manually via "what have we learned",
+  "skill learnings", "capture learnings".
 allowed-tools: "Read, Write, Edit, Glob, Grep, Bash(*), Agent"
 argument-hint: "[skill-name] [--apply] [--review]"
 metadata:
